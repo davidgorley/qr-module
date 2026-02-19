@@ -8,5 +8,4 @@ venv/
 *.db
 uploads/*
 !uploads/.gitkeep
-.env
 .DS_Store
