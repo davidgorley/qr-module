@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Images</title>
+    <link rel="stylesheet" href="/static/css/upload.css">
+</head>
+<body>
+    <div class="upload-container">
+        <h1>📷 Upload Images</h1>
+        <p>Select one or more images to display</p>
+
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">Tap to select images</div>
+        </div>
+
+        <div id="preview" class="preview-area"></div>
+        <button id="uploadBtn" onclick="uploadImages()" style="display: none;">Upload Images</button>
+        <div id="status" class="status-message"></div>
+    </div>
+
+    <script>
+        const serverUrl = '{{ server_url }}';
+        const roomId = '{{ room_id }}';
+    </script>
+    <script src="/static/js/upload.js"></script>
+</body>
+</html>

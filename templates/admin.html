@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Image Transfer - Admin</title>
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <div class="admin-container">
+        <h1>🎯 QR Image Transfer - Room Management</h1>
+
+        <div class="add-room-section">
+            <input type="text" id="roomName" placeholder="Enter room name (e.g., Room 201)" maxlength="50">
+            <button onclick="createRoom()" class="btn-create">Create Room</button>
+        </div>
+
+        <div class="rooms-controls">
+            <div class="search-wrap">
+                <input type="search" id="searchInput" placeholder="Search rooms by name or ID">
+                <button id="clearSearchBtn" class="btn-clear" title="Clear search">✕</button>
+                <span id="resultsCount" class="results-count" aria-live="polite"></span>
+            </div>
+
+            <div class="sort-buttons" role="tablist" aria-label="Sort rooms">
+                <button class="sort-btn active" data-sort="created_desc">Newest</button>
+                <button class="sort-btn" data-sort="created_asc">Oldest</button>
+                <button class="sort-btn" data-sort="name_asc">Name A→Z</button>
+                <button class="sort-btn" data-sort="name_desc">Name Z→A</button>
+            </div>
+        </div>
+
+        <div id="roomsList" class="rooms-grid"></div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">Upload Images</h2>
+            <input type="file" id="modalFileInput" accept="image/*" multiple>
+            <div id="modalPreview" class="modal-preview"></div>
+            <button onclick="uploadFromModal()" class="btn-upload-modal">Upload Images</button>
+            <div id="modalStatus" class="modal-status"></div>
+        </div>
+    </div>
+
+    <script>
+        const serverUrl = '{{ server_url }}';
+    </script>
+    <script src="/static/js/admin.js"></script>
+</body>
+</html>

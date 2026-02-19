@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Display</title>
+    <link rel="stylesheet" href="/static/css/display.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div id="qrContainer" class="qr-container">
+        <div id="qrcode"></div>
+    </div>
+
+    <div id="imageContainer" class="image-container" style="display: none;">
+        <img id="displayImage" src="" alt="Uploaded Image">
+        <button id="clearBtn">Clear</button>
+    </div>
+
+    <script>
+        const serverUrl = '{{ server_url }}';
+        const roomId = '{{ room_id }}';
+        const slideDuration = {{ slide_duration }};
+    </script>
+    <script src="/static/js/display.js"></script>
+</body>
+</html>
