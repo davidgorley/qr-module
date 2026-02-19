@@ -2,6 +2,50 @@
 
 All notable changes to QR Image Transfer will be documented in this file.
 
+## [7.0.0] - 2026-02-19
+
+### 🔧 Changed
+- `static/js/admin.js`: Added confirmation dialog to `clearRoomImages()` function - users must now confirm before clearing all images from a room via the admin panel
+
+### 📝 Technical Details
+- Confirmation uses native browser `confirm()` dialog
+- User can cancel the operation; images are only cleared if confirmed
+
+---
+
+## [6.4.1] - 2026-02-19
+
+### ✨ New Features
+- **Search & Sort on Admin Panel** - Filter rooms by name/ID with live search and sort by creation date or room name
+- **Persistent Database** - SQLite database now persists across Docker container rebuilds via mounted `./data` volume
+- **Configurable Slide Duration** - Added `SLIDE_DURATION` environment variable (milliseconds) to control image slideshow timing
+- **Clear Button on Admin Cards** - Each room card now has a "Clear" button to remove all images without deleting the room
+- **Improved Display UX** - Clear button centered and toned down on display page; removed confirm dialogs for tablet compatibility
+
+### 🔧 Changed
+- `docker-compose.yml`: Changed DB mount from `./qr_rooms.db` to `./data:/app/data` for proper file creation
+- `app.py`: Updated database path to `data/qr_rooms.db` and ensure `data` folder is created at startup
+- `.env`: Added `SLIDE_DURATION=5000` (5 seconds default)
+- `templates/admin.html`: Added search input with clear button, replaced select with sort buttons, added results count
+- `static/js/admin.js`: Implemented debounced search, sort button toggling, text highlighting in search results, added `clearRoomImages()` function
+- `static/css/admin.css`: Styled new search/sort toolbar, sort buttons, highlights, and added `.btn-clear` to room cards
+- `templates/display.html`: Removed inline `onclick` from Clear button for better tablet compatibility
+- `static/js/display.js`: Changed Clear button to event listener binding, removed confirm dialog for smoother tablet UX
+- `static/css/display.css`: Centered Clear button, reduced padding/font-size, lowered opacity (0.6), added mobile media query
+
+### 🐛 Fixed
+- Clear button on display page now works reliably on tablets (removed confirm dialog, used event listener)
+- Search performance improved with debouncing (250ms)
+- Database no longer fails to create when Docker container is rebuilt
+- Image slideshow now maintains proper sequence instead of resetting to first image every 3 seconds
+
+### 📝 Technical Details
+- Database persistence: Host `./data/` folder mounted to container `/app/data/`
+- Search: Client-side filtering with term highlighting
+- Slide duration: Configurable via `.env`, passed from server to display template as JavaScript variable
+
+---
+
 ## [6.2] - 2024-02-17
 
 ### 🐛 Fixed

@@ -208,6 +208,11 @@ mark {
     color: white;
 }
 
+.btn-clear {
+    background: #ffc107;
+    color: #333;
+}
+
 .btn-delete {
     background: #dc3545;
     color: white;

@@ -78,6 +78,7 @@ function renderRooms() {
             <div class="button-group">
                 <button class="btn-view" onclick="viewRoom('${room.id}')">View Display</button>
                 <button class="btn-upload" onclick="openUploadModal('${room.id}', '${escapeHtml(room.name)}')">Upload Images</button>
+                <button class="btn-clear" onclick="clearRoomImages('${room.id}')">Clear</button>
                 <button class="btn-delete" onclick="deleteRoom('${room.id}')">Delete</button>
             </div>
         </div>
@@ -133,6 +134,27 @@ function deleteRoom(roomId) {
     .catch(error => {
         console.error('Error deleting room:', error);
         alert('Failed to delete room');
+    });
+}
+
+function clearRoomImages(roomId) {
+    if (!confirm('Clear all images from this room?')) {
+        return;
+    }
+
+    fetch(`${serverUrl}/api/clear_images/${roomId}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadRooms();
+        } else {
+            console.error('Failed to clear images');
+        }
+    })
+    .catch(error => {
+        console.error('Error clearing images:', error);
     });
 }
 
