@@ -22,7 +22,10 @@ function checkForImages() {
     fetch(`${serverUrl}/api/get_images/${roomId}`)
         .then(response => response.json())
         .then(data => {
-            if (data.images && data.images.length > 0) {
+            if (data.disabled) {
+                // Room is disabled - show disabled message
+                showDisabled();
+            } else if (data.images && data.images.length > 0) {
                 if (!isShowingImages) {
                     images = data.images;
                     showImages();
@@ -41,6 +44,7 @@ function checkForImages() {
 function showQRCode() {
     isShowingImages = false;
     document.getElementById('imageContainer').style.display = 'none';
+    document.getElementById('disabledContainer').style.display = 'none';
     document.getElementById('qrContainer').style.display = 'flex';
     stopSlideshow();
 }
@@ -48,6 +52,7 @@ function showQRCode() {
 function showImages() {
     isShowingImages = true;
     document.getElementById('qrContainer').style.display = 'none';
+    document.getElementById('disabledContainer').style.display = 'none';
     document.getElementById('imageContainer').style.display = 'flex';
     currentImageIndex = 0;
     displayCurrentImage();
@@ -57,6 +62,14 @@ function showImages() {
     } else {
         stopSlideshow();
     }
+}
+
+function showDisabled() {
+    isShowingImages = false;
+    document.getElementById('qrContainer').style.display = 'none';
+    document.getElementById('imageContainer').style.display = 'none';
+    document.getElementById('disabledContainer').style.display = 'flex';
+    stopSlideshow();
 }
 
 function displayCurrentImage() {

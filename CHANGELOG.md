@@ -2,6 +2,68 @@
 
 All notable changes to QR Module will be documented in this file.
 
+## [7.1.0] - 2026-02-26
+
+### ✨ New Features
+- **Admin Login System** - Added secure login page with username/password authentication (configurable via `.env`)
+- **Room Enable/Disable Toggle** - Toggle rooms on/off without deleting them; disabled rooms show "Currently Disabled" message on display
+- **Media Pre-Approval System** - Optional admin approval workflow for uploaded images (configurable `APPROVAL_REQUIRED` in `.env`)
+- **Pending Approvals Section** - Admin panel now shows pending uploads grouped by room with thumbnail previews and quick approve/deny buttons
+- **Logout Button** - Added logout functionality to admin panel header
+- **Enabled/Disabled Sort Option** - New sort button to show enabled rooms first
+
+### 🔧 Changed
+- `app.py`: 
+  - Added session management with Flask secret key
+  - Added `@login_required` decorator to protected admin routes
+  - Updated `/api/rooms` endpoints to support `enabled` column
+  - Added `pending_images` table for approval workflow
+  - New endpoints: `/login`, `/logout`, `/api/rooms/<id>/toggle`, `/api/pending_images/*` (GET/approve/deny)
+  - Modified `/api/save_images` to support approval workflow
+  - Modified `/api/get_images` to check room enabled status
+- `templates/admin.html`: 
+  - Added "Enabled First" sort option
+  - Added pending approvals section (shown when approval required)
+  - Updated header with logout button
+- `templates/display.html`: Added disabled room container showing "Currently Disabled" message
+- `templates/login.html`: New login page with form validation
+- `static/js/admin.js`:
+  - Added `loadPendingApprovals()` function with room grouping
+  - Added `toggleRoom()`, `logout()`, `approveImage()`, `denyImage()` functions
+  - Updated `renderRooms()` to show status badges and disable toggle buttons
+  - Added auto-reload of pending approvals when approving/denying
+- `static/js/display.js`: Added `showDisabled()` function to handle disabled rooms
+- `static/css/admin.css`: 
+  - New styles for header with logout button
+  - New pending approvals grid layout (grouped by room)
+  - Room status badges and faded styling for disabled rooms
+- `static/css/display.css`: New disabled container with pulsing message
+- `static/css/login.css`: New login page styling with gradient background
+- `.env`: Added authentication and approval system configuration variables
+
+### 🐛 Fixed
+- **Image Slideshow with Approvals** - Fixed approve logic to add images instead of replacing them, so multiple approved images rotate correctly in slideshow
+- **Pending Approvals UI** - Improved UX by grouping by room with compact thumbnail grid instead of large item list
+
+### 📝 New Environment Variables
+```
+ADMIN_USERNAME=admin                    # Admin login username
+ADMIN_PASSWORD=admin123                 # Admin login password
+SECRET_KEY=your-secret-key-change-this # Session encryption (auto-generated if not set)
+APPROVAL_REQUIRED=false                 # Enable/disable approval workflow
+PENDING_IMAGE_EXPIRY_MINUTES=30         # Auto-delete unapproved images after N minutes
+```
+
+### 📝 Database Changes
+- `rooms` table: Added `enabled` INTEGER column (DEFAULT 1)
+- New `pending_images` table for tracking uploads awaiting approval
+
+### 📝 Breaking Changes
+- **Database Migration**: Old databases will auto-migrate on first run (disabled column added)
+- **Session Requirements**: All admin routes now require login; existing sessions may be invalidated
+
+---
+
 ## [7.0.0] - 2026-02-19
 
 ### 🔧 Changed

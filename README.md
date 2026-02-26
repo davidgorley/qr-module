@@ -1,4 +1,4 @@
-# QR Module v6.2
+# QR Module v7.1.0
 
 Multi-room QR code system for uploading and displaying images on TV/monitor displays.
 

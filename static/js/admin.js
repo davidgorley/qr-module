@@ -5,10 +5,21 @@ let currentSort = 'created_desc';
 
 function loadRooms() {
     fetch(`${serverUrl}/api/rooms`)
-        .then(response => response.json())
+        .then(response => {
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+            return response.json();
+        })
         .then(rooms => {
-            allRooms = rooms || [];
-            renderRooms();
+            if (rooms) {
+                allRooms = rooms || [];
+                renderRooms();
+                if (approvalRequired) {
+                    loadPendingApprovals();
+                }
+            }
         })
         .catch(error => {
             console.error('Error loading rooms:', error);
@@ -63,21 +74,32 @@ function renderRooms() {
         case 'name_desc':
             filtered.sort((a,b) => b.name.localeCompare(a.name));
             break;
+        case 'enabled_first':
+            filtered.sort((a,b) => (b.enabled === 1 ? 1 : 0) - (a.enabled === 1 ? 1 : 0));
+            break;
     }
 
     document.getElementById('resultsCount').textContent = `${filtered.length} result${filtered.length !== 1 ? 's' : ''}`;
 
     const term = searchVal;
     roomsList.innerHTML = filtered.map(room => `
-        <div class="room-card">
+        <div class="room-card ${room.enabled === 0 ? 'disabled' : ''}">
             <h3>${highlight(room.name, term)}</h3>
             <p>Room ID: <code>${highlight(room.id, term)}</code></p>
+            <p class="status-indicator">
+                <span class="status-badge ${room.enabled === 1 ? 'enabled' : 'disabled'}">
+                    ${room.enabled === 1 ? '🟢 Enabled' : '🔴 Disabled'}
+                </span>
+            </p>
             <div class="room-url" onclick="copyToClipboard('${serverUrl}/display/${room.id}')">
                 ${escapeHtml(`${serverUrl}/display/${room.id}`)}
             </div>
             <div class="button-group">
                 <button class="btn-view" onclick="viewRoom('${room.id}')">View Display</button>
                 <button class="btn-upload" onclick="openUploadModal('${room.id}', '${escapeHtml(room.name)}')">Upload Images</button>
+                <button class="btn-toggle ${room.enabled === 1 ? 'btn-disable' : 'btn-enable'}" onclick="toggleRoom('${room.id}')">
+                    ${room.enabled === 1 ? 'Disable' : 'Enable'}
+                </button>
                 <button class="btn-clear" onclick="clearRoomImages('${room.id}')">Clear</button>
                 <button class="btn-delete" onclick="deleteRoom('${room.id}')">Delete</button>
             </div>
@@ -301,4 +323,131 @@ loadRooms();
 
 function showAlert(msg) {
     alert(msg);
+}
+
+function logout() {
+    fetch(`${serverUrl}/logout`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/login';
+        }
+    })
+    .catch(error => {
+        console.error('Error logging out:', error);
+        alert('Error logging out');
+    });
+}
+
+function toggleRoom(roomId) {
+    fetch(`${serverUrl}/api/rooms/${roomId}/toggle`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadRooms();
+        } else {
+            alert('Failed to toggle room');
+        }
+    })
+    .catch(error => {
+        console.error('Error toggling room:', error);
+        alert('Failed to toggle room');
+    });
+}
+
+function loadPendingApprovals() {
+    const pendingSection = document.getElementById('pendingSection');
+    const pendingList = document.getElementById('pendingList');
+    
+    let hasPending = false;
+
+    // Load pending images for each room
+    const pendingPromises = allRooms.map(room =>
+        fetch(`${serverUrl}/api/pending_images/${room.id}`)
+            .then(response => response.json())
+            .then(data => {
+                return { room, pending: data.pending || [] };
+            })
+            .catch(error => {
+                console.error(`Error loading pending images for room ${room.id}:`, error);
+                return { room, pending: [] };
+            })
+    );
+
+    Promise.all(pendingPromises)
+        .then(results => {
+            const roomsWithPending = results.filter(r => r.pending.length > 0);
+            hasPending = roomsWithPending.length > 0;
+
+            if (hasPending) {
+                pendingSection.style.display = 'block';
+                pendingList.innerHTML = roomsWithPending.map(({ room, pending }) => `
+                    <div class="pending-room">
+                        <div class="pending-room-header">
+                            <h3>${escapeHtml(room.name)} <span class="badge">${pending.length}</span></h3>
+                        </div>
+                        <div class="pending-grid">
+                            ${pending.map(img => `
+                                <div class="pending-item-compact">
+                                    <div class="pending-thumb">
+                                        <img src="${img.url}" alt="Pending">
+                                        <span class="pending-time">${new Date(img.uploaded_at).toLocaleTimeString()}</span>
+                                    </div>
+                                    <div class="pending-item-actions">
+                                        <button class="btn-approve" onclick="approveImage(${img.id})" title="Approve">✓</button>
+                                        <button class="btn-deny" onclick="denyImage(${img.id})" title="Deny">✗</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                pendingSection.style.display = 'none';
+            }
+        });
+}
+
+function approveImage(imageId) {
+    fetch(`${serverUrl}/api/pending_images/${imageId}/approve`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadRooms();
+        } else {
+            alert('Failed to approve image');
+        }
+    })
+    .catch(error => {
+        console.error('Error approving image:', error);
+        alert('Failed to approve image');
+    });
+}
+
+function denyImage(imageId) {
+    if (!confirm('Are you sure you want to deny this upload?')) {
+        return;
+    }
+    
+    fetch(`${serverUrl}/api/pending_images/${imageId}/deny`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadRooms();
+        } else {
+            alert('Failed to deny image');
+        }
+    })
+    .catch(error => {
+        console.error('Error denying image:', error);
+        alert('Failed to deny image');
+    });
 }

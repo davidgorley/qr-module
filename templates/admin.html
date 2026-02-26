@@ -8,7 +8,10 @@
 </head>
 <body>
     <div class="admin-container">
-        <h1>🎯 QR Module - Room Management</h1>
+        <div class="admin-header">
+            <h1>🎯 QR Module - Room Management</h1>
+            <button onclick="logout()" class="btn-logout">Logout</button>
+        </div>
 
         <div class="add-room-section">
             <input type="text" id="roomName" placeholder="Enter room name (e.g., Room 201)" maxlength="50">
@@ -27,7 +30,14 @@
                 <button class="sort-btn" data-sort="created_asc">Oldest</button>
                 <button class="sort-btn" data-sort="name_asc">Name A→Z</button>
                 <button class="sort-btn" data-sort="name_desc">Name Z→A</button>
+                <button class="sort-btn" data-sort="enabled_first">Enabled First</button>
             </div>
+        </div>
+
+        <!-- Pending Approvals Section (shown only if approval required) -->
+        <div id="pendingSection" class="pending-section" style="display: none;">
+            <h2>⏳ Pending Approvals</h2>
+            <div id="pendingList" class="pending-list"></div>
         </div>
 
         <div id="roomsList" class="rooms-grid"></div>
@@ -47,6 +57,7 @@
 
     <script>
         const serverUrl = '{{ server_url }}';
+        const approvalRequired = {{ approval_required|lower }};
     </script>
     <script src="/static/js/admin.js"></script>
 </body>
