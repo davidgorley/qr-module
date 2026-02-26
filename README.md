@@ -1,4 +1,4 @@
-# QR Image Transfer v6.2
+# QR Module v6.2
 
 Multi-room QR code system for uploading and displaying images on TV/monitor displays.
 

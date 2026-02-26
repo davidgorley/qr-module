@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to QR Image Transfer will be documented in this file.
+All notable changes to QR Module will be documented in this file.
 
 ## [7.0.0] - 2026-02-19
 
