@@ -6,6 +6,7 @@ services:
     container_name: qr-module
     ports:
       - "5000:5000"
+      - "2575:2575"
     volumes:
       - ./uploads:/app/uploads
       - ./data:/app/data

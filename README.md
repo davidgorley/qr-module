@@ -10,6 +10,7 @@ Multi-room QR code system for uploading and displaying images on TV/monitor disp
 ✅ **Auto-Slideshow** - Rotate multiple images every 10 seconds
 ✅ **Persistent Storage** - Images survive restarts and reloads
 ✅ **Auto-Purge** - Automatically delete old images (configurable)
+✅ **HL7 Integration** - Clear images on patient discharge (A02/A03 messages)
 ✅ **Fullscreen Display** - Optimized for TV/monitor displays
 ✅ **Responsive QR Code** - Works on all screen sizes (HD, 4K, 8K)
 
@@ -81,7 +82,41 @@ SERVER_IP=10.192.128.125        # Your server IP
 SERVER_PORT=5000                # Port to run on
 AUTO_PURGE_ENABLED=true         # Enable auto-purge
 AUTO_PURGE_HOURS=48             # Delete images older than 48 hours
+SLIDE_DURATION=10000            # Slideshow interval in milliseconds
+APPROVAL_REQUIRED=false         # Require approval for uploads
+HL7_ENABLED=true                # Enable HL7 integration
+HL7_PORT=2575                   # HL7 listener port
 ```
+
+## HL7 Integration
+
+The QR Module can automatically clear images from a room when HL7 ADT messages are received (A02 - Patient Transfer, A03 - Patient Discharge).
+
+### How It Works
+
+1. **Room Location Mapping**: When creating a room in the admin panel, you specify Unit, Room Number, and Bed
+2. **HL7 Listener**: The system listens on the HL7 port (default 2575) for incoming ADT messages
+3. **Auto-Clear**: When an A02 or A03 message is received for a patient in that location, all images are automatically cleared from the display
+4. **ACK Response**: The system sends back an HL7 acknowledgement (MSA) confirming the message was processed
+
+### Configuration
+
+Enable/disable HL7 integration in `.env`:
+```bash
+HL7_ENABLED=true       # Enable HL7 listener
+HL7_PORT=2575          # Port to listen on (change if needed)
+```
+
+**Note:** The HL7 port must be accessible from your hospital HIS/ADT system. Ensure firewall rules allow inbound connections to this port.
+
+### Room Setup Example
+
+If your HL7 patient location is structured as:
+- Unit: `GT MS`
+- Room: `5201`
+- Bed: `1`
+
+Then create a room in the admin panel with those exact values. When an A02/A03 is received with that location, images are cleared immediately.
 
 ## Technical Specifications
 
@@ -90,11 +125,13 @@ AUTO_PURGE_HOURS=48             # Delete images older than 48 hours
 - **Frontend:** Vanilla JavaScript, HTML5, CSS3
 - **QR Library:** QRCode.js 1.0.0
 - **Container:** Docker (Python 3.11-slim)
-- **Port:** 5000
+- **HTTP Port:** 5000
+- **HL7 Port:** 2575 (default, configurable)
 - **Max Upload:** 50MB per file
 - **Slideshow Interval:** 10 seconds
 - **Polling Interval:** 3 seconds
 - **Auto-Purge Interval:** 1 hour
+- **HL7 Support:** ADT A02 (Patient Transfer) & A03 (Patient Discharge)
 
 ## Troubleshooting
 

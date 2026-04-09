@@ -536,6 +536,40 @@ mark {
     color: #721c24;
 }
 
+/* Form Group Styles */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+#createRoomForm .btn-create {
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+}
+
 @media (max-width: 768px) {
     .add-room-section {
         flex-direction: column;

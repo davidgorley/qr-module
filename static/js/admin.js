@@ -137,6 +137,62 @@ function createRoom() {
     });
 }
 
+function openCreateRoomModal() {
+    const modal = document.getElementById('createRoomModal');
+    modal.style.display = 'block';
+}
+
+function closeCreateRoomModal() {
+    const modal = document.getElementById('createRoomModal');
+    modal.style.display = 'none';
+    document.getElementById('createRoomForm').reset();
+    document.getElementById('createRoomStatus').textContent = '';
+}
+
+function submitCreateRoom(event) {
+    event.preventDefault();
+    
+    const unit = document.getElementById('roomUnit').value.trim();
+    const room = document.getElementById('roomNumber').value.trim();
+    const bed = document.getElementById('roomBed').value.trim();
+    const statusDiv = document.getElementById('createRoomStatus');
+    
+    if (!unit || !room || !bed) {
+        statusDiv.textContent = 'All fields are required';
+        statusDiv.className = 'modal-status error';
+        return;
+    }
+    
+    statusDiv.textContent = 'Creating room...';
+    statusDiv.className = 'modal-status';
+    
+    fetch(`${serverUrl}/api/rooms`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ unit, room, bed })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            statusDiv.textContent = 'Room created successfully!';
+            statusDiv.className = 'modal-status success';
+            document.getElementById('createRoomForm').reset();
+            setTimeout(() => closeCreateRoomModal(), 1500);
+            loadRooms();
+        } else {
+            statusDiv.textContent = 'Error: ' + (data.error || 'Unknown error');
+            statusDiv.className = 'modal-status error';
+        }
+    })
+    .catch(error => {
+        console.error('Error creating room:', error);
+        statusDiv.textContent = 'Failed to create room';
+        statusDiv.className = 'modal-status error';
+    });
+}
+
 function deleteRoom(roomId) {
     if (!confirm('Are you sure you want to delete this room? All images will be removed.')) {
         return;

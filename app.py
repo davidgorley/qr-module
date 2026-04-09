@@ -7,6 +7,9 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 from functools import wraps
 import secrets
+import threading
+import socket
+import hl7
 
 app = Flask(__name__)
 CORS(app)
@@ -30,6 +33,10 @@ ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', 'admin123')
 APPROVAL_REQUIRED = os.getenv('APPROVAL_REQUIRED', 'false').lower() == 'true'
 PENDING_IMAGE_EXPIRY_MINUTES = int(os.getenv('PENDING_IMAGE_EXPIRY_MINUTES', '30'))
 
+# HL7 Configuration
+HL7_PORT = int(os.getenv('HL7_PORT', '2575'))
+HL7_ENABLED = os.getenv('HL7_ENABLED', 'true').lower() == 'true'
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(DATA_FOLDER, exist_ok=True)
 
@@ -44,6 +51,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS rooms (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
+            unit TEXT,
+            room TEXT,
+            bed TEXT,
             enabled INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -68,9 +78,16 @@ def init_db():
         )
     ''')
     
-    # Add enabled column if it doesn't exist (migration)
+    # Add columns if they don't exist (migration)
     try:
         db.execute('ALTER TABLE rooms ADD COLUMN enabled INTEGER DEFAULT 1')
+    except:
+        pass
+    
+    try:
+        db.execute('ALTER TABLE rooms ADD COLUMN unit TEXT')
+        db.execute('ALTER TABLE rooms ADD COLUMN room TEXT')
+        db.execute('ALTER TABLE rooms ADD COLUMN bed TEXT')
     except:
         pass
     
@@ -124,6 +141,207 @@ def start_scheduler():
     scheduler.add_job(func=purge_old_images, trigger="interval", hours=1)
     scheduler.start()
     print(f"[SCHEDULER] Auto-purge enabled: every 1 hour (deletes images older than {AUTO_PURGE_HOURS}h)")
+
+
+def clear_images_by_location(unit, room_number, bed):
+    """
+    Clear all images for a room identified by unit, room number, and bed.
+    This is called by the HL7 listener when an A02 or A03 message is received.
+    """
+    try:
+        db = get_db()
+        # Find room by matching unit, room, and bed
+        room = db.execute(
+            'SELECT id FROM rooms WHERE unit = ? AND room = ? AND bed = ?',
+            (unit, room_number, bed)
+        ).fetchone()
+        
+        if not room:
+            print(f"[HL7] No room found for Unit={unit}, Room={room_number}, Bed={bed}")
+            db.close()
+            return False
+        
+        room_id = room['id']
+        
+        # Delete all images for this room
+        images = db.execute('SELECT image_path FROM room_images WHERE room_id = ?', (room_id,)).fetchall()
+        for img in images:
+            filepath = img['image_path']
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        
+        db.execute('DELETE FROM room_images WHERE room_id = ?', (room_id,))
+        db.commit()
+        db.close()
+        
+        print(f"[HL7] Cleared {len(images)} images for Unit={unit}, Room={room_number}, Bed={bed} (room_id={room_id})")
+        return True
+    except Exception as e:
+        print(f"[HL7 ERROR] clear_images_by_location: {str(e)}")
+        return False
+
+
+def parse_hl7_message(message_str):
+    """
+    Parse HL7 message and extract patient location if it's an A02 or A03 event.
+    Returns: (success, message_type, unit, room, bed) tuple
+    """
+    try:
+        # Parse HL7 message
+        message = hl7.parse(message_str)
+        
+        # Extract MSH and EVN segments
+        msh = message[0]  # MSH segment
+        evn = message[1] if len(message) > 1 else None  # EVN segment
+        
+        # Get message type from MSH-9
+        msg_type = None
+        if len(msh) > 8:
+            msg_subtype = msh[8]  # MSH-9
+            if isinstance(msg_subtype, list):
+                msg_type = msg_subtype[0] if len(msg_subtype) > 0 else None
+            else:
+                msg_type = str(msg_subtype).split('^')[0] if '^' in str(msg_subtype) else str(msg_subtype)
+        
+        # Only process A02 (Patient Transfer) and A03 (Patient Discharge)
+        if msg_type not in ['A02', 'A03']:
+            return (False, msg_type, None, None, None)
+        
+        # Find PV1 segment (Patient Visit Information)
+        pv1_segment = None
+        for segment in message:
+            if len(segment) > 0 and segment[0] == 'PV1':
+                pv1_segment = segment
+                break
+        
+        if not pv1_segment or len(pv1_segment) <= 3:
+            print(f"[HL7] No PV1 segment found or incomplete for message type {msg_type}")
+            return (False, msg_type, None, None, None)
+        
+        # PV1-3: Patient Location (Facility^Building^Floor^LocationDescription or Unit^Room^Bed^Facility^Floor)
+        location = pv1_segment[3]
+        
+        if isinstance(location, list):
+            # HL7 component format
+            unit = location[0] if len(location) > 0 else ''
+            room_number = location[1] if len(location) > 1 else ''
+            bed = location[2] if len(location) > 2 else ''
+        else:
+            # String format with ^ separator
+            parts = str(location).split('^')
+            unit = parts[0] if len(parts) > 0 else ''
+            room_number = parts[1] if len(parts) > 1 else ''
+            bed = parts[2] if len(parts) > 2 else ''
+        
+        return (True, msg_type, unit, room_number, bed)
+    except Exception as e:
+        print(f"[HL7 PARSE ERROR] {str(e)}")
+        return (False, None, None, None, None)
+
+
+def handle_hl7_connection(client_socket, addr):
+    """
+    Handle incoming HL7 connection from client.
+    Reads complete HL7 messages and processes A02/A03 events.
+    """
+    try:
+        print(f"[HL7] Connection from {addr}")
+        
+        while True:
+            # HL7 messages are delimited by \x0b (VT) prefix and \x1c\x0d (FS CR) suffix
+            data = client_socket.recv(4096)
+            if not data:
+                break
+            
+            # Convert bytes to string
+            raw_message = data.decode('utf-8', errors='ignore')
+            
+            # HL7 messages may contain multiple messages or partial messages
+            # Remove delimiters and split messages
+            messages = raw_message.split('\x1c\x0d')
+            
+            for msg in messages:
+                # Remove VT prefix if present
+                if msg.startswith('\x0b'):
+                    msg = msg[1:]
+                
+                msg = msg.strip()
+                if not msg:
+                    continue
+                
+                print(f"[HL7] Received message: {msg[:100]}...")
+                
+                # Parse message
+                success, msg_type, unit, room_number, bed = parse_hl7_message(msg)
+                
+                if success and msg_type in ['A02', 'A03']:
+                    print(f"[HL7] Processing {msg_type} for Unit={unit}, Room={room_number}, Bed={bed}")
+                    # Clear images for this location
+                    clear_images_by_location(unit, room_number, bed)
+                    
+                    # Send MSA (Message Acknowledgement) back to sender
+                    # Format: MSA|AA|MessageControlID
+                    # Extract message control ID from MSH-10
+                    try:
+                        lines = msg.split('\r')
+                        msh = lines[0].split('|')
+                        msg_control_id = msh[9] if len(msh) > 9 else '0'
+                    except:
+                        msg_control_id = '0'
+                    
+                    # Create MSA segment (AA = Application Accept)
+                    ack = f"\x0bMSA|AA|{msg_control_id}\x1c\x0d"
+                    client_socket.send(ack.encode('utf-8'))
+                    print(f"[HL7] Sent ACK for message {msg_control_id}")
+    
+    except Exception as e:
+        print(f"[HL7 CONNECTION ERROR] {str(e)}")
+    finally:
+        client_socket.close()
+        print(f"[HL7] Connection closed from {addr}")
+
+
+def start_hl7_listener():
+    """
+    Start HL7 listener server in a background thread.
+    Listens for HL7 ADT messages on the configured HL7_PORT.
+    """
+    if not HL7_ENABLED:
+        print("[HL7] HL7 listener is disabled")
+        return
+    
+    def run_listener():
+        try:
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server_socket.bind(('0.0.0.0', HL7_PORT))
+            server_socket.listen(5)
+            print(f"[HL7] Listener started on port {HL7_PORT}")
+            
+            while True:
+                try:
+                    client_socket, addr = server_socket.accept()
+                    # Handle each connection in a separate thread
+                    client_thread = threading.Thread(
+                        target=handle_hl7_connection,
+                        args=(client_socket, addr),
+                        daemon=True
+                    )
+                    client_thread.start()
+                except KeyboardInterrupt:
+                    break
+                except Exception as e:
+                    print(f"[HL7 LISTENER ERROR] {str(e)}")
+        except Exception as e:
+            print(f"[HL7 STARTUP ERROR] {str(e)}")
+        finally:
+            server_socket.close()
+    
+    # Start listener in a daemon thread
+    listener_thread = threading.Thread(target=run_listener, daemon=True)
+    listener_thread.start()
+
+
 
 def login_required(f):
     @wraps(f)
@@ -184,15 +402,20 @@ def get_rooms():
 @login_required
 def create_room():
     data = request.json
-    room_name = data.get('name')
+    unit = data.get('unit', '').strip()
+    room_number = data.get('room', '').strip()
+    bed = data.get('bed', '').strip()
 
-    if not room_name:
-        return jsonify({'success': False, 'error': 'Room name required'}), 400
+    if not unit or not room_number or not bed:
+        return jsonify({'success': False, 'error': 'Unit, Room, and Bed are required'}), 400
 
+    # Create room name for display purposes
+    room_name = f"{unit} - Room {room_number}, Bed {bed}"
     room_id = str(uuid.uuid4())[:8]
 
     db = get_db()
-    db.execute('INSERT INTO rooms (id, name, enabled) VALUES (?, ?, ?)', (room_id, room_name, 1))
+    db.execute('INSERT INTO rooms (id, name, unit, room, bed, enabled) VALUES (?, ?, ?, ?, ?, ?)', 
+               (room_id, room_name, unit, room_number, bed, 1))
     db.commit()
     db.close()
 
@@ -409,4 +632,6 @@ if __name__ == '__main__':
     init_db()
     if AUTO_PURGE_ENABLED:
         start_scheduler()
+    if HL7_ENABLED:
+        start_hl7_listener()
     app.run(host='0.0.0.0', port=5000, debug=False)
