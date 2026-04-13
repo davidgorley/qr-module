@@ -3,19 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Module - Admin</title>
+    <title>CarePics - Dashboard</title>
     <link rel="stylesheet" href="/static/css/admin.css">
 </head>
 <body>
+    <nav class="top-navbar">
+        <div class="navbar-brand">
+            <img src="/static/images/alairo-logo.png" alt="Alairo Solutions" class="navbar-logo">
+            <span class="navbar-title">CarePics</span>
+            <span class="navbar-subtitle">Patient Room Media Manager</span>
+        </div>
+        <div class="navbar-links">
+            <a href="/admin" class="nav-link active">Dashboard</a>
+            <button onclick="logout()" class="nav-link nav-logout">Logout</button>
+        </div>
+    </nav>
+
     <div class="admin-container">
         <div class="admin-header">
-            <h1>🎯 QR Module - Room Management</h1>
-            <button onclick="logout()" class="btn-logout">Logout</button>
+            <h1>Room Dashboard</h1>
         </div>
 
         <div class="add-room-section">
-            <input type="text" id="roomName" placeholder="Enter room name (e.g., Room 201)" maxlength="50">
+            <div class="room-input-group">
+                <input type="text" id="roomUnit" placeholder="Unit (e.g., GT MS)" maxlength="50">
+                <input type="text" id="roomNumber" placeholder="Room Number (e.g., 5201)" maxlength="50">
+                <input type="text" id="roomBed" placeholder="Bed (e.g., 1)" maxlength="50">
+                <input type="text" id="roomIP" placeholder="IP Address (e.g., 10.0.0.1)" maxlength="45">
+            </div>
             <button onclick="createRoom()" class="btn-create">Create Room</button>
+            <button onclick="openImportModal()" class="btn-import">Import Rooms</button>
         </div>
 
         <div class="rooms-controls">
@@ -23,6 +40,17 @@
                 <input type="search" id="searchInput" placeholder="Search rooms by name or ID">
                 <button id="clearSearchBtn" class="btn-clear" title="Clear search">✕</button>
                 <span id="resultsCount" class="results-count" aria-live="polite"></span>
+            </div>
+
+            <div class="filter-group">
+                <select id="unitFilter">
+                    <option value="">All Units</option>
+                </select>
+                <select id="statusFilter">
+                    <option value="">All Status</option>
+                    <option value="online">Online</option>
+                    <option value="offline">Offline</option>
+                </select>
             </div>
 
             <div class="sort-buttons" role="tablist" aria-label="Sort rooms">
@@ -55,9 +83,26 @@
         </div>
     </div>
 
+    <!-- Import Modal -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeImportModal()">&times;</span>
+            <h2>Import Rooms from CSV/XLSX</h2>
+            <p style="color: #64748b; margin-bottom: 16px; font-size: 14px;">Upload a CSV or XLSX file with columns: <strong>unit</strong>, <strong>room</strong>, <strong>bed</strong>, <strong>ipaddress</strong></p>
+            <input type="file" id="importFileInput" accept=".csv,.xlsx,.xls">
+            <div id="importPreview" style="margin-top: 16px; max-height: 300px; overflow-y: auto;"></div>
+            <button onclick="importRooms()" class="btn-upload-modal" id="importBtn" disabled>Import Rooms</button>
+            <div id="importStatus" class="modal-status"></div>
+        </div>
+    </div>
+
     <script>
         const serverUrl = '{{ server_url }}';
         const approvalRequired = {{ approval_required|lower }};
+        const pingEnabled = {{ ping_enabled|lower if ping_enabled is defined else 'true' }};
+        const pingIntervalSeconds = {{ ping_interval if ping_interval is defined else 30 }};
+        const vacancyCheckIntervalSeconds = {{ vacancy_check_interval if vacancy_check_interval is defined else 30 }};
+        console.log('Admin page loaded with config:', { pingEnabled, pingIntervalSeconds, vacancyCheckIntervalSeconds });
     </script>
     <script src="/static/js/admin.js"></script>
 </body>

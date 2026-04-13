@@ -5,8 +5,8 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: #3972a96b;
     min-height: 100vh;
     display: flex;
     justify-content: center;
@@ -20,11 +20,12 @@ body {
 }
 
 .login-card {
-    background: white;
+    background: #ffffff;
     border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     padding: 40px;
     animation: slideUp 0.4s ease-out;
+    border: 1px solid #e2e8f0;
 }
 
 @keyframes slideUp {
@@ -40,14 +41,38 @@ body {
 
 .login-card h1 {
     text-align: center;
-    color: #333;
+    color: #1e293b;
     margin-bottom: 5px;
-    font-size: 2em;
+    font-size: 2.4em;
+    font-weight: 700;
+}
+
+.app-title {
+    color: #1e293b !important;
+    font-size: 2.8em !important;
+    letter-spacing: -0.5px;
+}
+
+.powered-by {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-top: 8px;
+    margin-bottom: 6px;
+}
+
+.alairo-logo {
+    display: block;
+    margin: 0 auto 28px auto;
+    width: 140px;
+    height: auto;
 }
 
 .subtitle {
     text-align: center;
-    color: #666;
+    color: #64748b;
     font-size: 0.9em;
     margin-bottom: 30px;
 }
@@ -59,30 +84,30 @@ body {
 .form-group label {
     display: block;
     margin-bottom: 8px;
-    color: #333;
+    color: #64748b;
     font-weight: 500;
     font-size: 0.95em;
 }
 
 .form-group input {
     width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
     border-radius: 6px;
-    font-size: 1em;
+    font-size: 14px;
     transition: all 0.3s ease;
 }
 
 .form-group input:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 .btn-login {
     width: 100%;
     padding: 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #2563eb;
     color: white;
     border: none;
     border-radius: 6px;
@@ -94,8 +119,9 @@ body {
 }
 
 .btn-login:hover {
+    background: #1d4ed8;
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
 }
 
 .btn-login:active {

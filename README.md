@@ -12,6 +12,7 @@ Multi-room QR code system for uploading and displaying images on TV/monitor disp
 ✅ **Auto-Purge** - Automatically delete old images (configurable)
 ✅ **Fullscreen Display** - Optimized for TV/monitor displays
 ✅ **Responsive QR Code** - Works on all screen sizes (HD, 4K, 8K)
+✅ **HL7 ADT Integration** - Auto-clear images on patient transfer/discharge
 
 ## Installation
 
@@ -50,9 +51,29 @@ docker compose logs -f
 
 ### Create a Room
 1. Open admin panel: `http://10.192.128.125:5000`
-2. Enter room name (e.g., "Room 201")
+2. Enter Unit, Room Number, and Bed fields (must match your hospital system's location data)
 3. Click "Create Room"
 4. Click "View Display" to open display page
+
+### ADT Discharge Auto-Clear
+
+The system automatically clears images when patients are discharged or transferred. It polls the hospital's patient management API to detect status changes.
+
+**How it works:**
+1. When creating a room, enter Unit, Room, and Bed values matching your hospital system
+2. qr-module polls the nexus patient API every 30 seconds
+3. When a patient is first detected as admitted, the room is marked as occupied
+4. When that patient is no longer admitted (discharged/transferred), all images are automatically cleared
+5. The display returns to showing the QR code
+
+**Configuration (`.env`):**
+```bash
+ADT_POLL_ENABLED=true                           # Enable/disable discharge polling
+ADT_POLL_INTERVAL=30                            # Polling interval in seconds
+NEXUS_API_URL=http://192.168.1.197:3001         # Nexus admin API URL
+```
+
+**No additional services or port mappings required.** Everything runs within qr-module.
 
 ### Upload Images (QR Code Method)
 1. Scan QR code with phone camera
@@ -90,7 +111,7 @@ AUTO_PURGE_HOURS=48             # Delete images older than 48 hours
 - **Frontend:** Vanilla JavaScript, HTML5, CSS3
 - **QR Library:** QRCode.js 1.0.0
 - **Container:** Docker (Python 3.11-slim)
-- **Port:** 5000
+- **Port:** 5000 (HTTP)
 - **Max Upload:** 50MB per file
 - **Slideshow Interval:** 10 seconds
 - **Polling Interval:** 3 seconds
@@ -105,6 +126,13 @@ docker compose logs -f
 
 ### Port already in use
 Edit `docker-compose.yml` and change `"5000:5000"` to `"8080:5000"`
+
+### ADT Discharge Auto-Clear Not Working
+- Check logs: `docker compose logs -f qr-module | grep "\[ADT\]"`
+- Verify `ADT_POLL_ENABLED=true` in `.env`
+- Verify `NEXUS_API_URL` points to the correct nexus admin API (default: `http://192.168.1.197:3001`)
+- Verify room Unit, Room, and Bed fields exactly match nexus bed data
+- If logs show "Cannot reach nexus API", check network connectivity between containers
 
 ### Images not appearing
 - Check network connectivity

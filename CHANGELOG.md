@@ -1,6 +1,167 @@
 # Changelog
 
-All notable changes to QR Module will be documented in this file.
+All notable changes to CarePics (formerly QR Module) will be documented in this file.
+
+## [9.0.0] - 2026-04-13
+
+### ✨ New Features
+- **IP Address Field** - Room creation now includes optional IP address field for device tracking
+- **Device Online/Offline Status** - Devices are pinged every `PING_INTERVAL_SECONDS` to determine online/offline status
+  - Status badges show **ONLINE** (green) or **OFFLINE** (red) on room cards
+  - Status can be filtered via "Online/Offline" dropdown filter
+- **Room Card Redesign** - Per mockup specifications:
+  - **Unit** (centered, uppercase) at top
+  - **Room - Bed** (centered, bold) as main heading
+  - **IP Address** (grey, centered) below heading
+  - Status badges: ONLINE/OFFLINE + ADMITTED/VACANT (removed Enabled badge)
+  - URL and buttons in two-row layout
+- **Unit Filter Dropdown** - Dynamic filter to show rooms by unit only
+- **Auto-refresh Functionality**
+  - Ping checks every `PING_INTERVAL_SECONDS` (default: 30s, configurable)
+  - Room data (admit/vacant status) refreshes every `VACANCY_CHECK_INTERVAL_SECONDS` (default: 30s, configurable)
+  - Dashboard updates automatically without page refresh
+- **Configurable Timeouts** (.env variables):
+  - `PING_ENABLED` - Enable/disable ping checks (default: true)
+  - `PING_INTERVAL_SECONDS` - Frequency of device pings (default: 30)
+  - `PING_TIMEOUT_SECONDS` - Ping timeout per device (default: 5)
+  - `VACANCY_CHECK_INTERVAL_SECONDS` - Frequency of room data refresh (default: 30)
+
+### 🔧 Changed
+- `app.py`:
+  - Added `ipaddress TEXT` column migration to rooms table
+  - Updated `create_room()` endpoint to accept and store `ipaddress`
+  - Updated `import_rooms()` endpoint to accept and store `ipaddress` from CSV/XLSX
+  - New `POST /api/rooms/ping` endpoint: accepts `{ips: {room_id: ip_address}}`, returns ping results
+  - Reads config from `.env`: PING_ENABLED, PING_INTERVAL_SECONDS, PING_TIMEOUT_SECONDS, VACANCY_CHECK_INTERVAL_SECONDS
+  - Added logging (INFO level) for ping commands and results
+- `templates/admin.html`:
+  - Added 4th input field to room creation: "IP Address (e.g., 10.0.0.1)"
+  - Added "Unit" filter dropdown (dynamic, populated from room data)
+  - Added "Online/Offline" status filter dropdown
+  - Passes config variables to JavaScript: `pingEnabled`, `pingIntervalSeconds`, `vacancyCheckIntervalSeconds`
+- `static/js/admin.js`:
+  - `renderRooms()` completely redesigned card HTML per mockup
+  - New unit/status filter logic in `renderRooms()`
+  - `pingAllRooms()` now returns Promise, waits before rendering
+  - `loadRooms()` waits for ping to complete before rendering cards
+  - `createRoom()` now includes `ipaddress` field
+  - `populateUnitFilter()` dynamically builds unit dropdown from room data
+  - `startAutoRefresh()` sets up two intervals:
+    - Ping refresh every `pingIntervalSeconds`
+    - Room data refresh every `vacancyCheckIntervalSeconds`
+  - Added function `pingAllRooms()` as Promise-based reusable function
+- `static/css/admin.css`:
+  - Widened `.admin-container` from 1200px to **1600px**
+  - Added `.card-unit`, `.card-room-bed`, `.card-ip`, `.card-badges` styles for centered card layout
+  - Added `.status-badge.online` (green, #dcfce7 bg) and `.status-badge.offline` (red, #fef2f2 bg)
+  - Added `.filter-group select` styling for filter dropdowns
+  - Updated `.rooms-controls` with `flex-wrap` for responsive filter layout
+  - Added spacing between button groups on cards
+- `Dockerfile`:
+  - Added `apt-get install iputils-ping` to enable ICMP ping in container
+- `.env`:
+  - Added 4 new configuration variables for ping and vacancy checks (see Features section)
+- `docker-compose.yml`: No changes (container now has ping binary installed via Dockerfile)
+
+### 🐛 Fixed
+- **Device status not updating** - Fixed race condition where `renderRooms()` was called before `pingAllRooms()` completed
+  - Now `loadRooms()` waits for ping results before rendering
+- **Docker ping failures** - Container (`python:3.11-slim`) lacked `ping` command
+  - Now installs `iputils-ping` package in Dockerfile
+- **Linux ping timeout parameter** - Was passing milliseconds to `-W` flag which expects seconds
+  - Fixed: Windows `-w` gets milliseconds, Linux `-W` gets seconds
+- **Template variables undefined** - Added Jinja2 conditionals with safe defaults
+
+### 📝 Notes
+- CSV/XLSX import now supports `ipaddress` column (optional, alongside unit/room/bed)
+- Admission/vacancy status now updates every 30s without refresh (via HL7 integration)
+- Online/offline status updates every 30s via automated ping checks
+- All timestamps configurable — adjust `.env` for your network environment
+
+---
+
+## [8.1.0] - 2026-04-10
+
+### ✨ New Features
+- **CarePics Rebranding** - Project renamed from "QR Module" to **CarePics** across all user-facing pages
+- **Login Page Redesign** - New CareStream-style login with "CarePics" title, "POWERED BY" Alairo Solutions logo, and blue "Sign In" button
+- **Dashboard Navbar** - Added fixed top navigation bar with Alairo logo, "CarePics" branding, "Patient Room Media Manager" subtitle, and nav links
+- **Alairo Solutions Logo** - Added Alairo Solutions logo asset at `/static/images/alairo-logo.png`
+
+### 🔧 Changed
+- `templates/login.html`:
+  - Title: "QR Module - Login" → "CarePics - Login"
+  - Heading: "🎯 QR Module" → "CarePics" with "POWERED BY" + Alairo logo
+  - Subtitle: "Admin Access" removed, replaced with logo branding
+  - Button: "Login" → "➡ Sign In"
+- `templates/admin.html`:
+  - Title: "QR Module - Admin" → "CarePics - Dashboard"
+  - Added `<nav class="top-navbar">` with Alairo logo, CarePics title, and nav links
+  - Heading: "🎯 QR Module - Room Management" → "📋 Room Dashboard"
+  - Logout button moved from admin header into navbar
+- `templates/display.html`: Title "QR Display" → "CarePics Display"
+- `static/css/login.css`:
+  - Background gradient: purple (#667eea → #764ba2) → blue (#1e3a8a → #2563eb → #1e40af)
+  - All accent colors updated from purple to blue (#2563eb)
+  - Added styles for `.app-title`, `.powered-by`, `.alairo-logo`
+- `static/css/admin.css`:
+  - Body background: purple gradient → light steel blue (#b8c5d3)
+  - Added full `.top-navbar` styling (fixed position, dark blue gradient)
+  - Heading color: white → dark grey (#2d3748)
+  - All accent colors: purple (#667eea) → blue (#2563eb)
+  - Sort buttons, badges, create button, modal all updated to blue scheme
+  - Added responsive rules (navbar subtitle hidden on mobile)
+- `static/images/alairo-logo.png`: New Alairo Solutions logo asset
+
+### 📝 Notes
+- No backend changes; all routes, API endpoints, and database remain unchanged
+- JavaScript logic untouched — all functions (login, logout, CRUD, polling) work as before
+
+---
+
+## [8.0.0] - 2026-04-10
+
+### ✨ New Features
+- **HL7 Integration** - Real-time ADT event processing via webhook from hl7-service
+  - **Discharge (A03)**: Automatically clears all images when a patient is discharged
+  - **Admit (A01)**: Marks room as patient-admitted for tracking
+  - **Transfer (A02)**: Clears images at old location and marks new location as admitted
+- **HL7 Webhook Endpoint** - `POST /api/hl7/event` receives ADT events with shared-secret authentication
+- **HL7 Health Check** - `GET /api/hl7/status` for hl7-service to verify connectivity
+- **ADT Debug Endpoint** - `GET /api/adt/debug` runs a manual discharge check cycle with detailed diagnostics
+- **ADT Discharge Polling (fallback)** - Scheduled polling against Nexus API as backup when HL7 events are unavailable
+- **Nexus API Integration** - JWT-authenticated queries to Nexus patient management system for admitted patient lists
+- **Room Location Matching** - Cascading match algorithm (exact unit/room/bed → room+bed → room-only) to map hospital locations to rooms
+- **Structured Room Creation** - Rooms now require Unit, Room Number, and Bed fields instead of free-text name; display name auto-generated as "{unit} - Room {room_number}, Bed {bed}"
+
+### 🔧 Changed
+- `app.py`:
+  - Added `validate_webhook_secret` decorator for HL7 webhook authentication
+  - Added `clear_images_for_room()` utility (deletes files + DB records for approved and pending images)
+  - Added `find_rooms_by_location()` with cascading match strategy
+  - Added `get_nexus_jwt_token()` with global JWT caching (28-day expiry)
+  - Added `check_discharges()` polling job (configurable interval via `ADT_POLL_INTERVAL`)
+  - Added `handle_discharge()`, `handle_admit()`, `handle_transfer()` event handlers
+  - Room creation now requires `unit`, `room`, `bed` fields
+- `templates/admin.html`: Room creation inputs changed from single name field to Unit, Room Number, and Bed fields
+
+### 📝 New Environment Variables
+```
+ADT_POLL_ENABLED=true                   # Enable/disable Nexus polling fallback
+ADT_POLL_INTERVAL=30                    # Polling interval in seconds
+NEXUS_API_URL=http://192.168.1.197:3001 # Nexus patient management API
+NEXUS_ADMIN_USERNAME=vizabli            # Nexus admin username
+NEXUS_ADMIN_PASSWORD=<password>         # Nexus admin password
+HL7_WEBHOOK_ENABLED=true               # Enable/disable HL7 webhook endpoint
+HL7_WEBHOOK_SECRET=<secret>            # Shared secret for webhook authentication
+```
+
+### 📝 Database Changes
+- `rooms` table: Added `unit TEXT`, `room TEXT`, `bed TEXT` columns
+- `rooms` table: Added `patient_admitted INTEGER DEFAULT 0` column
+- Auto-migration adds columns if missing on startup
+
+---
 
 ## [7.1.0] - 2026-02-26
 

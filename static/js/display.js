@@ -93,18 +93,23 @@ function stopSlideshow() {
 }
 
 function clearImages() {
+    console.log('Clear button clicked');
     fetch(`${serverUrl}/api/clear_images/${roomId}`, {
         method: 'POST'
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Clear response status:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('Clear response data:', data);
         if (data.success) {
             images = [];
             isShowingImages = false;
             stopSlideshow();
             showQRCode();
         } else {
-            console.error('Failed to clear images');
+            console.error('Server returned error:', data.error);
         }
     })
     .catch(error => {
